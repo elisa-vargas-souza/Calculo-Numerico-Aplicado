@@ -20,3 +20,5 @@ $\textcolor{red}{\text{Levantamento das referências literárias, artigos e docu
 as bases teórico-computacionais da}}$ 
 $\textcolor{red}{\text{disciplina como um todo, formatadas segundo o padrão normativo
 exigido (ABNT, IEEE, etc.)}}$
+
+criar um gitignore
