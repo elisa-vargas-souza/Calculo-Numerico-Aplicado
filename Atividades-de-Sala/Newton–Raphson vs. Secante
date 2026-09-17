@@ -1,1 +1,45 @@
+# Aula 02 - Métodos Newton-Rapson e Secante
+import matplotlib as plt
 
+
+## Newton-Rapson
+
+# Inputs
+A = 0.01  # área da superfície [m^2]
+h = 10  # coef. de transferencia de calor por convecção [W/m^2K]
+e = 0.8  # emissividade da superfície
+o = 5.67e-8  # constante de Stefan-Boltzmann [W/m^2K^4]
+P = 20  # potência térmica [W]
+T_inf = 300  # temperatura do ambiente [K]
+T0 = 350  # estimativa inicial [K]
+tol = 1e-6  # tolerância
+erro = 1  # erro para o critério de convergência
+k = 0  # número de iterações
+
+# Loop do método Newton-Rapson
+T = T0  # temperatura atual
+f = h*A*(T-T_inf) + e*o*A*((T**4)-(T_inf**4)) - P
+while abs(erro) >= tol:
+    dfdt = h*A + 4*e*o*A*(T**3)
+    T_new = T - (f/dfdt)
+    # Cálculo do erro
+    erro = T_new-T
+    # Atualização de valores
+    k = k+1
+    T = T_new
+    f = h*A*(T-T_inf) + e*o*A*((T**4)-(T_inf**4)) - P
+    # Retorna os valores
+    print(f"iteração nº: {k}, temperatura: {T}, f(T) = {f}, erro: {erro:.6f}")
+    # Limite de iterações (caso não haja convergência)
+    if k>=500:
+        print("Não houve convergência")
+        break
+
+# Outputs
+print(f"Temperatura de equilíbrio encontrada: {T}")
+print(f"Número de iterações necessárias: {k}")
+
+
+## Secante
+
+# Inputs
