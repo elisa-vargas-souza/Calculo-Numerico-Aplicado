@@ -1,0 +1,40 @@
+# Metodo de Muller
+
+Q = 20
+g = 9.81
+b = 4
+z = 1.5
+
+a_0 = -b*Q**2
+a_1 = -2*z*Q**2
+a_2 = 0
+a_3 = g*b**3
+a_4 = 3*g*z*b**2
+a_5 = 3*g*b*z**2
+a_6 = g*z**3
+
+print (f"f(H) = {a_6} H\u2076 + {a_5} H\u2075 + {a_4} H\u2074 + {a_3} H\u00b3 {a_1} H {a_0}")
+
+# Definindo a função polinomial
+def f(x):
+    a_0 = -b*Q**2
+    a_1 = -2*z*Q**2
+    a_3 = g*b**3
+    a_4 = 3*g*z*b**2
+    a_5 = 3*g*b*z**2
+    a_6 = g*z**3
+    resultado = a_6*x**6 + a_5*x**5 + a_4*x**4 + a_3*x**3 + a_1*x + a_0
+    return resultado
+
+# chutes iniciais
+H_0 = 0.5
+H_1 = 1
+H_2 = 1.5
+
+f_0 = f(H_0)
+f_1 = f(H_1)
+f_2 = f(H_2)
+h_0 = H_1 - H_0
+h_1 = H_2 - H_1
+s0 = (f_1 - f_0)/h_0
+s1 = (f_2 - f_1)/h_1
