@@ -1,1 +1,33 @@
-aula 1
+# definindo a função
+def funcao(h):
+    f = ((0.471405*(20*h)**(5/3))/((20+2*h)**(2/3)))-5
+    return f
+
+# parâmetros iniciais
+i = 0  # primeiro chute
+f = 1.5  # segundo chute
+tol = 0.0001  # precisão
+
+n = 0
+Fr = 1
+while abs(Fr) >= tol:   # comparando com a tolerância
+    # cálculo dos pontos
+    m = ((f-i)/2)+i; print(m)
+    F_i = funcao(i); #print(F_i)
+    F_m = funcao(m); #print(F_m)
+    F_f = funcao(f); #print(F_f)
+    # método da bissecção
+    if F_i*F_m <= 0:
+        f = m
+        Fr = F_m
+    elif F_m*F_f <= 0:
+        i = m
+        Fr = F_m
+    else:
+        print("a raíz não está nesse intervalo")
+        break
+    n = n + 1
+
+print(Fr)
+print(m)
+print(n)
