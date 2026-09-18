@@ -1,0 +1,192 @@
+\documentclass[12pt,a4paper]{article}
+
+% ================= PACOTES =================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{caption}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{APC \#2 -- Cálculo Numérico Aplicado}
+\lhead{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+
+% ================= DADOS DO ALUNO =================
+
+\title{
+    \vspace{-1.5cm}
+    \textbf{Atividade para Casa 02} \\}
+
+\author{Elisa Vargas de Souza \\ Matrícula: 231012540 \\[0.3cm]
+    Cálculo Numérico Aplicado \\}
+
+\begin{document}
+
+\maketitle
+
+% =====================================================
+\section{Polinômio Característico}
+% =====================================================
+
+Considerando o sistema massa-mola-amortecedor com N graus de liberdade, temos que sua equação do movimento é:
+
+\begin{equation}
+    M\ddot{\mathbf{x}}(t) + C\dot{\mathbf{x}}(t) + K\mathbf{x}(t) = \mathbf{0}
+    \label{eq:eom}
+\end{equation}
+
+\noindent em que $M, C, K$ são, respectivamente, as
+matrizes de massa, amortecimento e rigidez, e $\mathbf{x}(t)$ é o vetor de deslocamentos. Assumimos então a solução $\mathbf{x}(t) = \boldsymbol{\phi}\, e^{\lambda t}$ e, substituindo em (1), temos:
+
+\begin{equation}
+    M\frac{d^2}{dt^2}(\boldsymbol{\phi}\, e^{\lambda t}) + C\frac{d}{dt}(\boldsymbol{\phi}\, e^{\lambda t}) + K(\boldsymbol{\phi}\, e^{\lambda t}) = 0
+\end{equation}
+\begin{equation}
+    \frac{d}{dt}(\boldsymbol{\phi}\, e^{\lambda t}) = \boldsymbol{\phi}\lambda\, e^{\lambda t}, \qquad
+    \frac{d^2}{dt^2}(\boldsymbol{\phi}\, e^{\lambda t}) = \boldsymbol{\phi}\lambda^2\, e^{\lambda t}
+\end{equation}
+\begin{equation}
+    M(\boldsymbol{\phi}\lambda^2\, e^{\lambda t}) + C(\boldsymbol{\phi}\lambda\, e^{\lambda t}) + K(\boldsymbol{\phi}\, e^{\lambda t}) = \mathbf{0}
+    \label{eq:eom}
+\end{equation}
+
+\noindent Sabendo que $\, e^{\lambda t}\neq0$ temos:
+
+\begin{equation}
+    M\phi\lambda^2 + C\phi\lambda + K\phi = \mathbf{0}
+    \label{eq:eom}
+\end{equation}
+
+\noindent Esta equação, no entanto, é a forma geral da operação matricial do problemas. Definindo essa equação como uma única matriz temos:
+
+\begin{equation}
+    \phi A(\lambda) = M\phi\lambda^2 + C\phi\lambda + K\phi
+    \label{eq:eom}
+\end{equation}
+
+\noindent Em que:
+
+\begin{equation}
+    A(\lambda) = 
+    \begin{bmatrix}
+        m_{11}\lambda^2+c_{11}\lambda+k_{11} & m_{12}\lambda^2+c_{12}\lambda+k_{12} & ... \\
+        m_{21}\lambda^2+c_{21}\lambda+k_{21} & ... & ...\\
+        ... & ... & ...\\
+        ... & ... & m_{NN}\lambda^2+c_{NN}\lambda+k_{NN}
+    \end{bmatrix}
+    \label{eq:eom}
+\end{equation}
+
+\noindent Sendo assim, para que hajam soluções para esse sistema que não sejam $A(\lambda) = 0$, o determinante da matriz deve ser igual a 0, ou seja:
+
+\begin{equation}
+    det(A(\lambda)) = (m_{11}\lambda^2+c_{11}\lambda+k_{11})(m_{22}\lambda^2+c_{22}\lambda+k_{22})...(m_{NN}\lambda^2+c_{NN}\lambda+k_{NN})
+\end{equation}
+\begin{equation}    
+    - (m_{1N}\lambda^2+c_{1N}\lambda+k_{1N})...(m_{N1}\lambda^2+c_{N1}\lambda+k_{N1})
+\end{equation}
+\begin{equation}    
+    det(A(\lambda)) = a_{2N}\lambda^{2N} + a_{2N-1}\lambda^{2N-1}+...+a_0 = 0
+\end{equation}
+
+\noindent Sendo esse o polinômio característico do problema de grau 2N.
+
+% =====================================================
+\section{Interpretação Física}
+% =====================================================
+% TODO: discuta o significado físico das 2N raízes de P(lambda):
+% - raízes complexas conjugadas -> modos oscilatórios amortecidos
+% - parte real negativa -> estabilidade / decaimento
+% - parte real positiva -> instabilidade
+% - raízes reais puras -> comportamento superamortecido / não oscilatório
+% - relação entre |Im(lambda)| e a frequência natural amortecida
+% - relação entre Re(lambda) e a taxa de decaimento / fator de amortecimento
+
+...
+
+% =====================================================
+\section{Determinação dos valores}
+% =====================================================
+
+% TODO: escolha N (sugestão: N = 2 ou N = 3) e proponha valores numéricos
+% para massas m_i, coeficientes de amortecimento c_i e rigidezes k_i.
+% Desenhe (ou descreva) o sistema massa-mola-amortecedor correspondente.
+
+Considerando um sistema com $N = 2$ graus de liberdade, foram escolhidos valores para as matrizes de massa, amortecimento e rigidez com base no modelo de um quarto de carro, muito utilizado para análises de dinâmica veícular. Sendo assim, temos:
+
+\begin{equation}
+    m_1 = 350, \quad m_2 = 45
+\end{equation}
+
+\noindent Onde $m_1$ representa a massa suspensa e $m_2$ a massa não suspensa do veículo. Conectadas pelas rigidezes:
+
+\begin{equation}
+    k_1 = 20000, \quad k_2 = 200000
+\end{equation}
+
+\noindent Em que $k_1$ representa a rigidez da suspensão e $k_2$ a rigidez do pneu. E, por fim, com coeficientes de amortecimento:
+
+\begin{equation}
+    c_1 = 1500, \quad c_2 = 0
+\end{equation}
+
+\noindent Onde $c_1$ representa o amortecimento da suspensão e $k_2$ o amortecimento do pneu, que nesse caso é desprezível.
+
+% Sugestão: inclua aqui uma figura esquemática do sistema (TikZ) se desejar.
+% \begin{figure}[H]
+%     \centering
+%     % \input{seu_diagrama_tikz.tex}
+%     \caption{Esquema do sistema massa-mola-amortecedor com $N$ graus de liberdade.}
+%     \label{fig:sistema}
+% \end{figure}
+
+% =====================================================
+\section{Sistema de Equações e Polinômio Caracterísco}
+% =====================================================
+
+% TODO: monte explicitamente as matrizes M, C, K para os valores escolhidos
+
+As matrizes de massa, amortecimento e rigidez para o sistema proposto são:
+
+\begin{equation}
+    M =
+    \begin{bmatrix}
+        350 & 0 \\
+        0 & 45
+    \end{bmatrix}, \qquad
+    C =
+    \begin{bmatrix}
+        1500 & -1500 \\
+        -1500 & 1500
+    \end{bmatrix}, \qquad
+    K =
+    \begin{bmatrix}
+        20000 & -20000 \\
+        -20000 & 220000
+    \end{bmatrix}.
+    \label{eq:matrizes}
+\end{equation}
+
+\end{document}
