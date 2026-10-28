@@ -46,7 +46,7 @@ while abs(Fr) >= tol:   # critério de convergência
 
     print(f'{it}° iteração\nH_l = {inicio:.5f} e H_u = {fim:.5f}\nH_r = {m:.5f}\nf(H_r) = {Fr:.5f}\n')
     
-    if it > iter_max:
+    if it >= iter_max:
         print('Não houve convergência')
         break
 
@@ -86,7 +86,7 @@ while abs(Fr) >= tol:   # critério de convergência
 
     print(f'{it}° iteração\nH_l = {inicio:.5f} e H_u = {fim:.5f}\nH_r = {m:.5f}\nf(H_r) = {Fr:.5f}\n')
     
-    if it > iter_max:
+    if it >= iter_max:
         print('Não houve convergência')
         break
 
