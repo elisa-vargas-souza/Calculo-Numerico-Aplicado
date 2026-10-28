@@ -1,8 +1,16 @@
-# Aula 02 - Métodos Newton-Rapson e Secante
 import matplotlib as plt
 
+## Newton-Raphson
+print(f'--- Método de Newton-Raphson ---\n')
 
-## Newton-Rapson
+# Definindo as Funções f(T) e f'(T)
+def f(T,A,h,e,o,P,T_inf):
+    resultado = h*A*(T-T_inf) + e*o*A*((T**4)-(T_inf**4)) - P
+    return resultado
+
+def dfdt(T,A,h,e,o):
+    resultado = h*A + 4*e*o*A*(T**3)
+    return resultado
 
 # Inputs
 A = 0.01  # área da superfície [m^2]
@@ -12,34 +20,82 @@ o = 5.67e-8  # constante de Stefan-Boltzmann [W/m^2K^4]
 P = 20  # potência térmica [W]
 T_inf = 300  # temperatura do ambiente [K]
 T0 = 350  # estimativa inicial [K]
-tol = 1e-6  # tolerância
-erro = 1  # erro para o critério de convergência
-k = 0  # número de iterações
+tol = 10e-6  # tolerância
+k_max = 10e5 # limite de iterações
 
-# Loop do método Newton-Rapson
+# Loop de cálculo
+
 T = T0  # temperatura atual
-f = h*A*(T-T_inf) + e*o*A*((T**4)-(T_inf**4)) - P
+erro = 1  # erro inicial para o critério de convergência
+k = 0  # contador de iterações
+F = f(T,A,h,e,o,P,T_inf) # f(T) inicial
+
 while abs(erro) >= tol:
-    dfdt = h*A + 4*e*o*A*(T**3)
-    T_new = T - (f/dfdt)
+
+    # calculo do novo ponto
+    dF = dfdt(T,A,h,e,o)
+    T_new = T - (F/dF)
+    
     # Cálculo do erro
     erro = T_new-T
+    
     # Atualização de valores
     k = k+1
     T = T_new
-    f = h*A*(T-T_inf) + e*o*A*((T**4)-(T_inf**4)) - P
-    # Retorna os valores
-    print(f"iteração nº: {k}, temperatura: {T}, f(T) = {f}, erro: {erro:.6f}")
-    # Limite de iterações (caso não haja convergência)
-    if k>=500:
-        print("Não houve convergência")
+    F = f(T,A,h,e,o,P,T_inf)
+
+    # Resultados
+    print(f'{k}° iteração\nT = {T:.5f} K\nf(T) = {F:.5f}\nerro = {erro:.5f}\n')
+    
+    # Limite de iterações
+    if k >= k_max:
+        print('Não houve convergência')
         break
 
 # Outputs
-print(f"Temperatura de equilíbrio encontrada: {T}")
-print(f"Número de iterações necessárias: {k}")
+print(f'Resultado Final\nTemperatura de equilíbrio encontrada: {T:.5f} K\nNúmero de iterações necessárias: {k}\n')
+
 
 
 ## Secante
+print(f'\n--- Método da Secante ---\n')
 
 # Inputs
+T0 = 400  # estimativa inicial 1 [K]
+T1 = 425 # estumativa inicial 2 [K]
+#obs: é importante que as estimativas escolhidas a partir do banco de dados tenham f(T) com sinais opostos
+
+# Loop de cálculo
+
+T_old = T0  # temperatura antiga
+T = T1  # temperatura atual
+erro = 1  # erro inicial para o critério de convergência
+k = 0  # contador de iterações
+F_old = f(T_old,A,h,e,o,P,T_inf) # f(T_old) inicial
+F = f(T,A,h,e,o,P,T_inf) # f(T) inicial
+
+while abs(erro) >= tol:
+
+    # calculo do novo ponto
+    T_new = T - (F*((T-T_old)/(F-F_old)))
+    
+    # Cálculo do erro
+    erro = T_new-T
+    
+    # Atualização de valores
+    k = k+1
+    T_old = T
+    T = T_new
+    F_old = f(T_old,A,h,e,o,P,T_inf)
+    F = f(T,A,h,e,o,P,T_inf)
+
+    # Resultados
+    print(f'{k}° iteração\nT = {T:.5f} K\nf(T) = {F:.5f}\nerro = {erro:.5f}\n')
+    
+    # Limite de iterações
+    if k >= k_max:
+        print('Não houve convergência')
+        break
+
+# Outputs
+print(f'Resultado Final\nTemperatura de equilíbrio encontrada: {T:.5f} K\nNúmero de iterações necessárias: {k}\n')
