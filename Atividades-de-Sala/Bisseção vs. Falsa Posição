@@ -1,33 +1,104 @@
-# definindo a função
+## Definindo a Função
 def funcao(h):
-    f = ((0.471405*(20*h)**(5/3))/((20+2*h)**(2/3)))-5
-    return f
+    resultado = ((0.471405*(20*h)**(5/3))/((20+2*h)**(2/3)))-5
+    return resultado
 
-# parâmetros iniciais
-i = 0  # primeiro chute
-f = 1.5  # segundo chute
-tol = 0.0001  # precisão
+## Parâmetros Iniciais
+Q = 5  # vazão volumétrica em [m^3/s]
+B = 20 # largura em [m]
+H_l = 0  # início do intervalo
+H_u = 1.5  # final do intervalo
+tol = 10e-6  # tolerância
+iter_max =  100000 # limite de iterações
 
-n = 0
+## Loops de Cálculo
+
+
+# Método da Bissecção
+print(f'--- Método da Bissecção ---\n')
+
+i = H_l
+f = H_u
+it = 0 # contador de iterações
 Fr = 1
-while abs(Fr) >= tol:   # comparando com a tolerância
+
+while abs(Fr) >= tol:   # critério de convergência
+    
     # cálculo dos pontos
-    m = ((f-i)/2)+i; print(m)
-    F_i = funcao(i); #print(F_i)
-    F_m = funcao(m); #print(F_m)
-    F_f = funcao(f); #print(F_f)
-    # método da bissecção
-    if F_i*F_m <= 0:
+    m = (f+i)/2
+    F_i = funcao(i) # inicial
+    F_m = funcao(m) # médio
+    F_f = funcao(f) # final
+    inicio = i
+    fim = f
+    
+    if F_i*F_m <= 0:  # mudança de sinal
         f = m
         Fr = F_m
-    elif F_m*F_f <= 0:
+    elif F_m*F_f <= 0:  # mesmo sinal
         i = m
         Fr = F_m
     else:
         print("a raíz não está nesse intervalo")
         break
-    n = n + 1
+    
+    it = it + 1
 
-print(Fr)
-print(m)
-print(n)
+    print(f'{it}° iteração\nH_l = {inicio:.5f} e H_u = {fim:.5f}\nH_r = {m:.5f}\nf(H_r) = {Fr:.5f}\n')
+    
+    if it > iter_max:
+        print('Não houve convergência')
+        break
+
+H_bissec = m
+print(f'Resultado Final\nProfundidade encontrada: {m:.5f} metros.\nNúmero de iterações necessárias: {it}\n')
+
+
+# Método da Falsa Posição
+print(f'\n--- Método da Falsa Posição ---\n')
+
+i = H_l
+f = H_u
+it = 0 # contador de iterações
+Fr = 1
+
+while abs(Fr) >= tol:   # critério de convergência
+    
+    # cálculo dos pontos
+    F_i = funcao(i) # inicial
+    F_f = funcao(f) # final
+    m = ((i*F_f)-(f*F_i))/(F_f-F_i)
+    F_m = funcao(m) # médio
+    inicio = i
+    fim = f
+    
+    if F_i*F_m <= 0:  # mudança de sinal
+        f = m
+        Fr = F_m
+    elif F_m*F_f <= 0:  # mesmo sinal
+        i = m
+        Fr = F_m
+    else:
+        print("a raíz não está nesse intervalo")
+        break
+    
+    it = it + 1
+
+    print(f'{it}° iteração\nH_l = {inicio:.5f} e H_u = {fim:.5f}\nH_r = {m:.5f}\nf(H_r) = {Fr:.5f}\n')
+    
+    if it > iter_max:
+        print('Não houve convergência')
+        break
+
+H_fp = m
+print(f'Resultado Final\nProfundidade encontrada: {m:.5f} metros.\nNúmero de iterações necessárias: {it}\n')
+
+## Cálculo da Velocidade Média
+
+print(f'\n--- Velocidade Média Calculada ---\n')
+
+U = Q/(B*H_bissec)
+print(f'pelo método da bissecção: {U} m/s\n')
+
+U = Q/(B*H_fp)
+print(f'pelo método da falsa posição: {U} m/s')
