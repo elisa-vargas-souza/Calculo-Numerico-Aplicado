@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
  
-# ---------------- Dados (Tabela 1) ----------------
+## Inputs (valores econômicos)
 r1 = 0.040       # m
 L = 20.0         # m
 Ti = 180.0       # C
@@ -32,7 +32,7 @@ def custo(e):
     return CE, CI, CE + CI
  
  
-# ---------------- Parte 1: exploracao numerica (item 4) ----------------
+## 1 - exploracao numerica
 print("PARTE 1 - Exploracao (pE = 0,70 R$/kWh)")
 print(f"{'e [m]':>8}{'CE [R$]':>14}{'CI [R$]':>12}{'C [R$]':>14}")
 es = [0.0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12]
@@ -53,7 +53,7 @@ plt.grid(alpha=0.3)
 plt.tight_layout()
 plt.savefig("grafico_C_e.png", dpi=150)
  
-# ---------------- Partes 2 e 4: razao aurea para varios pE ----------------
+## 2 e 4 - razao aurea para varios pE
 tau = (sqrt(5.0) - 1.0) / 2.0
 precos = [0.35, 0.70, 1.05, 1.40]
 emins = []
@@ -99,7 +99,7 @@ plt.grid(alpha=0.3)
 plt.tight_layout()
 plt.savefig("grafico_emin_pE.png", dpi=150)
  
-# ---------------- Parte 3: interpolacao quadratica (pE = 0,70) ----------------
+# 3 - interpolacao quadratica (pE = 0,70)
 pE = 0.70
 triplas = [(0.04, 0.07, 0.11), (0.02, 0.06, 0.10), (0.05, 0.08, 0.12)]
 print("\nPARTE 3 - Interpolacao quadratica (pE = 0,70)")
