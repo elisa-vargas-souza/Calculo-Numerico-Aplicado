@@ -1,0 +1,100 @@
+# ---- Sistemas: 2 GDL (parte 1) e 5 GDL (partes 2 a 4) ----
+k2 = [1000.0, 500.0, 1000.0]                           # k0, k1, k2
+k5 = [1200.0, 800.0, 1500.0, 1000.0, 1800.0, 900.0]    # k0 ... k5
+ 
+for nome, k in (("2 GDL", k2), ("5 GDL", k5)):
+    n = len(k) - 1
+ 
+    # ---- Matriz de rigidez K (tridiagonal) ----
+    K = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        K[i][i] = k[i] + k[i + 1]
+        if i > 0:
+            K[i][i - 1] = -k[i]
+        if i < n - 1:
+            K[i][i + 1] = -k[i + 1]
+ 
+    print("=" * 60)
+    print(f"Sistema com {nome}")
+    print("=" * 60)
+    print("K [N/m]:")
+    for linha in K:
+        print("  " + " ".join(f"{v:10.2f}" for v in linha))
+ 
+    # ---- Decomposicao LU (uma unica vez) ----
+    L = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+    U = [linha[:] for linha in K]
+    for p in range(n - 1):
+        for i in range(p + 1, n):
+            fator = U[i][p] / U[p][p]
+            L[i][p] = fator
+            for j in range(p + 1, n):
+                U[i][j] = U[i][j] - fator * U[p][j]
+            U[i][p] = 0.0
+ 
+    print("\nL:")
+    for linha in L:
+        print("  " + " ".join(f"{v:10.5f}" for v in linha))
+    print("U:")
+    for linha in U:
+        print("  " + " ".join(f"{v:10.2f}" for v in linha))
+ 
+    # verificacao L*U = K
+    erro_lu = 0.0
+    for i in range(n):
+        for j in range(n):
+            s = sum(L[i][m] * U[m][j] for m in range(n))
+            erro_lu = max(erro_lu, abs(s - K[i][j]))
+    print(f"max|LU - K| = {erro_lu:.3e}")
+ 
+    # ---- Inversa coluna a coluna: C = K^-1 ----
+    C = [[0.0] * n for _ in range(n)]
+    for col in range(n):
+        e = [0.0] * n
+        e[col] = 1.0
+ 
+        y = [0.0] * n                       # L y = e  (progressiva)
+        for i in range(n):
+            soma = e[i]
+            for j in range(i):
+                soma = soma - L[i][j] * y[j]
+            y[i] = soma / L[i][i]
+ 
+        x = [0.0] * n                       # U x = y  (regressiva)
+        x[n - 1] = y[n - 1] / U[n - 1][n - 1]
+        for i in range(n - 2, -1, -1):
+            soma = y[i]
+            for j in range(i + 1, n):
+                soma = soma - U[i][j] * x[j]
+            x[i] = soma / U[i][i]
+ 
+        for i in range(n):
+            C[i][col] = x[i]
+ 
+    print("\nC = K^-1 (flexibilidade) [m/N]:")
+    for linha in C:
+        print("  " + " ".join(f"{v:12.6e}" for v in linha))
+ 
+    # ---- Verificacoes: M = K*C e simetria de C ----
+    erromax = 0.0
+    errosim = 0.0
+    for i in range(n):
+        for j in range(n):
+            M_ij = sum(K[i][m] * C[m][j] for m in range(n))
+            erromax = max(erromax, abs(M_ij - (1.0 if i == j else 0.0)))
+            errosim = max(errosim, abs(C[i][j] - C[j][i]))
+    print(f"\nerromax = max|KC - I| = {erromax:.3e}")
+    print(f"errosim = max|C - C^T| = {errosim:.3e}")
+ 
+    # ---- Deslocamentos u = C F (so no sistema de 5 GDL) ----
+    if n == 5:
+        F = [0.0, 100.0, 0.0, -50.0, 25.0]
+        u = [sum(C[i][j] * F[j] for j in range(n)) for i in range(n)]
+        print("\nF [N]  =", F)
+        print("u [m]  =", " ".join(f"{v:.6e}" for v in u))
+ 
+        # conferencia: K u deve devolver F
+        r = max(abs(sum(K[i][j] * u[j] for j in range(n)) - F[i]) for i in range(n))
+        print(f"max|K u - F| = {r:.3e} N")
+    print()
+ 
