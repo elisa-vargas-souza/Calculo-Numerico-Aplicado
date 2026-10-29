@@ -1,0 +1,173 @@
+from math import pi, log, sqrt
+ 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+ 
+# ---------------- Dados (Tabela 1) ----------------
+r1 = 0.040       # m
+L = 20.0         # m
+Ti = 180.0       # C
+Tinf = 40.0      # C
+k = 0.045        # W/(m K)
+h = 12.0         # W/(m2 K)
+t = 30000.0      # h
+pE = 0.70        # R$/kWh  (muda na parte 4)
+cI = 9000.0      # R$/m3
+tol = 1e-6       # m
+maxiter = 200
+ 
+n_aval = 0       # contador de avaliacoes de C
+ 
+ 
+def custo(e):
+    """Retorna (CE, CI, C) em R$ para a espessura e. Conta as avaliacoes."""
+    global n_aval
+    n_aval += 1
+    Rcond = log((r1 + e) / r1) / (2 * pi * k)        # K m / W
+    Rconv = 1.0 / (2 * pi * h * (r1 + e))            # K m / W
+    q = (Ti - Tinf) / (Rcond + Rconv)                # W/m
+    CE = pE * L * q * t / 1000.0
+    CI = cI * pi * L * ((r1 + e) ** 2 - r1 ** 2)
+    return CE, CI, CE + CI
+ 
+ 
+# ---------------- Parte 1: exploracao numerica (item 4) ----------------
+print("PARTE 1 - Exploracao (pE = 0,70 R$/kWh)")
+print(f"{'e [m]':>8}{'CE [R$]':>14}{'CI [R$]':>12}{'C [R$]':>14}")
+es = [0.0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12]
+for e in es:
+    CE, CI, C = custo(e)
+    print(f"{e:>8.2f}{CE:>14.2f}{CI:>12.2f}{C:>14.2f}")
+ 
+ee = [0.12 * i / 240 for i in range(241)]
+CC = [custo(e)[2] for e in ee]
+plt.figure(figsize=(6.5, 4))
+plt.plot(ee, [custo(e)[0] for e in ee], "--", label="CE (energia)")
+plt.plot(ee, [custo(e)[1] for e in ee], ":", label="CI (isolante)")
+plt.plot(ee, CC, lw=2, label="C total")
+plt.xlabel("espessura e (m)")
+plt.ylabel("custo (R$)")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig("grafico_C_e.png", dpi=150)
+ 
+# ---------------- Partes 2 e 4: razao aurea para varios pE ----------------
+tau = (sqrt(5.0) - 1.0) / 2.0
+precos = [0.35, 0.70, 1.05, 1.40]
+emins = []
+print("\nPARTES 2 e 4 - Razao aurea para diferentes precos de energia")
+print(f"{'pE':>6}{'e_otimo [m]':>14}{'CE [R$]':>12}{'CI [R$]':>12}{'C [R$]':>12}"
+      f"{'iter':>6}{'aval':>6}")
+for pE in precos:
+    n_aval = 0
+    a, b = 0.0, 0.12
+    x1 = b - tau * (b - a)
+    x2 = a + tau * (b - a)
+    f1 = custo(x1)[2]
+    f2 = custo(x2)[2]
+    it = 0
+    while abs(b - a) > tol and it < maxiter:
+        if f1 > f2:
+            a = x1
+            x1 = x2
+            f1 = f2
+            x2 = a + tau * (b - a)
+            f2 = custo(x2)[2]
+        else:
+            b = x2
+            x2 = x1
+            f2 = f1
+            x1 = b - tau * (b - a)
+            f1 = custo(x1)[2]
+        it += 1
+    emin = (a + b) / 2.0
+    av = n_aval                                  # avaliacoes do metodo (sem a de abaixo)
+    CE, CI, C = custo(emin)
+    emins.append(emin)
+    print(f"{pE:>6.2f}{emin:>14.8f}{CE:>12.2f}{CI:>12.2f}{C:>12.2f}{it:>6}{av:>6}")
+    if pE == 0.70:                               # caso base para a comparacao
+        ag = dict(e=emin, C=C, it=it, av=av,
+                  crit=f"largura {b - a:.2e} < tol" if it < maxiter else "maxiter")
+ 
+plt.figure(figsize=(6, 4))
+plt.plot(precos, emins, "o-")
+plt.xlabel("preco da energia pE (R$/kWh)")
+plt.ylabel("espessura otima (m)")
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig("grafico_emin_pE.png", dpi=150)
+ 
+# ---------------- Parte 3: interpolacao quadratica (pE = 0,70) ----------------
+pE = 0.70
+triplas = [(0.04, 0.07, 0.11), (0.02, 0.06, 0.10), (0.05, 0.08, 0.12)]
+print("\nPARTE 3 - Interpolacao quadratica (pE = 0,70)")
+for idx, (x1, x2, x3) in enumerate(triplas):
+    n_aval = 0
+    f1, f2, f3 = custo(x1)[2], custo(x2)[2], custo(x3)[2]
+    print(f"\nTripla inicial {x1}, {x2}, {x3}: f = {f1:.2f}, {f2:.2f}, {f3:.2f}")
+    if not (f2 < f1 and f2 < f3):
+        print("  invalida (C(x2) nao e o menor) -> ignorada")
+        continue
+ 
+    it, n_prot, motivo = 0, 0, "maxiter"
+    while it < maxiter:
+        if x3 - x1 < tol:
+            motivo = f"largura x3-x1 = {x3 - x1:.2e} < tol"
+            break
+        d1 = (f2 - f1) / (x2 - x1)
+        A = ((f3 - f2) / (x3 - x2) - d1) / (x3 - x1)
+        B = d1 - A * (x1 + x2)
+        x2_antigo = x2
+ 
+        usar_aurea = False
+        if A <= 1e-12:                           # parabola nao convexa / A ~ 0
+            usar_aurea = True
+        else:
+            xn = -B / (2 * A)
+            # vertice fora de (x1,x3) ou praticamente igual a um ponto existente
+            if not (x1 < xn < x3) or min(abs(xn - x1), abs(xn - x2), abs(xn - x3)) < 1e-9:
+                usar_aurea = True
+        if usar_aurea:                           # passo de razao aurea no maior subintervalo
+            n_prot += 1
+            if x3 - x2 > x2 - x1:
+                xn = x2 + (1 - tau) * (x3 - x2)
+            else:
+                xn = x2 - (1 - tau) * (x2 - x1)
+ 
+        fn = custo(xn)[2]
+        if xn < x2 and fn < f2:
+            x1, x2, x3, f1, f2, f3 = x1, xn, x2, f1, fn, f2
+        elif xn < x2:
+            x1, x2, x3, f1, f2, f3 = xn, x2, x3, fn, f2, f3
+        elif fn < f2:
+            x1, x2, x3, f1, f2, f3 = x2, xn, x3, f2, fn, f3
+        else:
+            x1, x2, x3, f1, f2, f3 = x1, x2, xn, f1, f2, fn
+        it += 1
+    else:
+        motivo = "numero maximo de iteracoes"
+ 
+    print(f"  e_otimo = {x2:.8f} m | C = {f2:.2f} R$ | iter = {it} | aval = {n_aval}"
+          f" | passos de protecao (aurea) = {n_prot} | variacao de x2 na ultima it. "
+          f"= {abs(x2 - x2_antigo):.2e}")
+    print(f"  parada: {motivo}")
+    if idx == 0:
+        qd = dict(e=x2, C=f2, it=it, av=n_aval, crit=motivo + f"; {n_prot} prot.")
+ 
+# ---------------- Item 9: tabela comparativa ----------------
+print("\nITEM 9 - Comparacao (pE = 0,70, tol = 1e-6 m)")
+print(f"{'Resultado':<24}{'Razao aurea':>26}{'Interp. quadratica':>40}")
+print(f"{'Espessura otima (m)':<24}{ag['e']:>26.8f}{qd['e']:>40.8f}")
+print(f"{'Custo minimo (R$)':<24}{ag['C']:>26.2f}{qd['C']:>40.2f}")
+print(f"{'Iteracoes':<24}{ag['it']:>26}{qd['it']:>40}")
+print(f"{'Avaliacoes de C(e)':<24}{ag['av']:>26}{qd['av']:>40}")
+print(f"{'Parada':<24}{ag['crit']:>26}{qd['crit']:>40}")
+ 
+# ---------------- Item 11: raio critico ----------------
+rc = k / h
+print(f"\nITEM 11 - Raio critico rc = k/h = {rc:.5f} m  (r1 = {r1} m)")
+print("rc < r1:" , "sim -> qualquer isolamento reduz a perda de calor" if rc < r1
+      else "nao -> isolamento fino pode aumentar a perda")
+ 
