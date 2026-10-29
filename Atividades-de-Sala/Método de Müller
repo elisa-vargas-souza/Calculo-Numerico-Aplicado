@@ -45,213 +45,97 @@ s1 = (f_2 - f_1)/h_1
 
 from math import sqrt
  
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
  
-
-# Dados do problema
-
-B = 4.0      # largura de fundo [m]
-Z = 1.5      # inclinacao lateral z:1
-G = 9.81     # gravidade [m/s^2]
-TOL = 1e-8   # criterio de parada |H3 - H2| < 1e-8 m
-NMAX = 100   # numero maximo de iteracoes
+b, z, g = 4.0, 1.5, 9.81
+tol, nmax = 1e-8, 100
  
  
-
-# Parte 1 - coeficientes e polinomio (itens 2, 3 e 8)
-
-def coeficientes(Q, b=B, z=Z, g=G):
-    """Retorna [a6, a5, a4, a3, a2, a1, a0] do polinomio de 6a ordem."""
-    return [
-        g * z**3,            # a6
-        3 * g * b * z**2,    # a5
-        3 * g * b**2 * z,    # a4
-        g * b**3,            # a3
-        0.0,                 # a2
-        -2 * Q**2 * z,       # a1
-        -Q**2 * b,           # a0
-    ]
- 
- 
-def f(H, Q, b=B, z=Z, g=G):
-    """f(H) = g z^3 H^6 + 3 g b z^2 H^5 + 3 g b^2 z H^4 + g b^3 H^3 - 2 Q^2 z H - Q^2 b.
- 
-    Q e parametro da funcao (varia na varredura de vazoes)."""
+def f(H, Q):
     return (g * z**3 * H**6 + 3 * g * b * z**2 * H**5 + 3 * g * b**2 * z * H**4
             + g * b**3 * H**3 - 2 * Q**2 * z * H - Q**2 * b)
  
  
-
-# Parte 2 e 3 - metodo de Muller (itens 4 a 10)
-
-def muller(func, H0, H1, H2, tol=TOL, nmax=NMAX, verbose=True):
-    """Metodo de Muller em aritmetica real.
+# ---- Item 3: coeficientes para Q = 20 ----
+Q = 20.0
+coef = [g * z**3, 3 * g * b * z**2, 3 * g * b**2 * z, g * b**3, 0.0, -2 * Q**2 * z, -Q**2 * b]
+print("Coeficientes a6..a0 (Q = 20):", [round(a, 5) for a in coef])
  
-    Retorna (raiz, numero_de_iteracoes, convergiu)."""
-    if verbose:
-        print(f"{'k':>3} {'H0':>14} {'H1':>14} {'H2':>14} {'H3':>16} "
-              f"{'f(H3)':>14} {'|H3-H2|':>12}")
+# ---- Casos: (Q, H0, H1, H2, tipo) ----
+casos = [(20.0, 0.5, 1.0, 1.5, "principal")]
+for Q in [5, 10, 15, 20, 25, 30, 35, 40]:                  # varredura de vazoes
+    Hr = (Q**2 / (g * b**2)) ** (1 / 3)                    # chute proporcional a Hr (canal retangular)
+    casos.append((float(Q), 0.8 * Hr, 1.0 * Hr, 1.2 * Hr, "varredura"))
+for tripla in [(0.1, 0.5, 1.0), (1.0, 2.0, 3.0), (-1.0, 0.0, 1.0)]:   # item 15(f)
+    casos.append((20.0, *tripla, "item f"))
  
+vazoes, profs = [], []
+for Q, H0, H1, H2, tipo in casos:
+    if tipo == "principal":
+        print(f"\nMuller, Q = 20, chutes {H0}, {H1}, {H2}")
+        print(f"{'k':>2}{'H0':>12}{'H1':>12}{'H2':>12}{'H3':>14}{'f(H3)':>13}{'|H3-H2|':>11}")
+ 
+    ini = (H0, H1, H2)                                     # chutes iniciais (para impressao)
+    convergiu = False
     for k in range(1, nmax + 1):
-        f0, f1, f2 = func(H0), func(H1), func(H2)          # item 4
- 
-        h0, h1 = H1 - H0, H2 - H1                          # item 5
-        if h0 == 0 or h1 == 0:
-            print("Pontos repetidos: o metodo falhou.")
-            return H2, k, False
+        f0, f1, f2 = f(H0, Q), f(H1, Q), f(H2, Q)
+        h0, h1 = H1 - H0, H2 - H1
         d0, d1 = (f1 - f0) / h0, (f2 - f1) / h1
         a = (d1 - d0) / (h1 + h0)
         bM = a * h1 + d1
         c = f2
  
-        disc = bM**2 - 4 * a * c                           # item 6
-        if disc < 0:
-            print(f"Discriminante negativo na iteracao {k}: a parabola nao "
-                  "cruza o eixo (raiz complexa). O metodo falhou.")
-            return H2, k, False
+        disc = bM**2 - 4 * a * c
+        if disc < 0:                                       # raiz complexa: metodo real para
+            break
         D = sqrt(disc)
         E = bM + D if abs(bM + D) > abs(bM - D) else bM - D
-        if E == 0:
-            print("Denominador nulo: o metodo falhou.")
-            return H2, k, False
-        dH = -2 * c / E
-        H3 = H2 + dH
- 
+        H3 = H2 - 2 * c / E
         erro = abs(H3 - H2)
-        if verbose:
-            print(f"{k:>3} {H0:>14.8f} {H1:>14.8f} {H2:>14.8f} "
-                  f"{H3:>16.10f} {func(H3):>14.6e} {erro:>12.3e}")
+ 
+        if tipo == "principal":
+            print(f"{k:>2}{H0:>12.6f}{H1:>12.6f}{H2:>12.6f}{H3:>14.10f}{f(H3, Q):>13.3e}{erro:>11.2e}")
  
         if erro < tol:
-            return H3, k, True
-        H0, H1, H2 = H1, H2, H3                            # item 7
+            convergiu = True
+            break
+        H0, H1, H2 = H1, H2, H3
  
-    return H2, nmax, False
+    # ---- resultados de cada caso ----
+    if tipo == "principal":
+        Hc = H3
+        A = b * Hc + z * Hc**2
+        T = b + 2 * z * Hc
+        Fr2 = Q**2 * T / (g * A**3)
+        print(f"\nHc = {Hc:.10f} m em {k} iteracoes")
+        print(f"Ac = {A:.6f} m2, Tc = {T:.6f} m, Fr^2 = {Fr2:.12f}, Fr = {sqrt(Fr2):.12f}")
+        print("Raiz real e positiva:", Hc > 0)
+        print("Todas as raizes (numpy, so conferencia):", np.round(np.roots(coef), 4))
+        print("\nVarredura de vazoes:")
+        print(f"{'Q':>5}{'Hc [m]':>14}{'iter':>6}")
+    elif tipo == "varredura":
+        print(f"{Q:>5.0f}{H3:>14.8f}{k:>6}")
+        vazoes.append(Q)
+        profs.append(H3)
+    else:
+        if convergiu:
+            print(f"item f: chutes {ini} -> H = {H3:.10f} m ({k} iteracoes)")
+        else:
+            print(f"item f: chutes {ini} -> nao convergiu (discriminante negativo na iteracao {k})")
  
+# ---- Arquivo Q x Hc e grafico ----
+with open("resultados_Q_Hc.txt", "w") as arq:
+    arq.write("# Q [m3/s]    Hc [m]\n")
+    for Q, Hc in zip(vazoes, profs):
+        arq.write(f"{Q:8.1f} {Hc:14.8f}\n")
  
-
-# Parte 4 - verificacoes fisicas (itens 11 e 12)
-
-def froude2(H, Q, b=B, z=Z, g=G):
-    A = b * H + z * H**2
-    T = b + 2 * z * H
-    return Q**2 * T / (g * A**3)
- 
- 
-def chute_inicial(Q, b=B, g=G):
-    """Tres aproximacoes iniciais proporcionais a profundidade critica de um
-    canal retangular de mesma largura, Hr = (Q^2/(g b^2))^(1/3).
- 
-    Como Muller aqui usa aritmetica real, chutes bem escolhidos evitam
-    discriminante negativo (valores fixos como 0,5/1,0/1,5 falham em Q = 5)."""
-    Hr = (Q**2 / (g * b**2)) ** (1.0 / 3.0)
-    return 0.8 * Hr, 1.0 * Hr, 1.2 * Hr
- 
- 
-def resolve(Q, H0=None, H1=None, H2=None, verbose=False):
-    """Resolve para uma vazao Q. Retorna (Hc, n_iter, convergiu)."""
-    if H0 is None:
-        H0, H1, H2 = chute_inicial(Q)
-    return muller(lambda H: f(H, Q), H0, H1, H2, verbose=verbose)
- 
- 
-def main():
-    # ---- Item 3: coeficientes para Q = 20 -------------------------------
-    Q = 20.0
-    print("=" * 78)
-    print("ITEM 3 - Coeficientes para b = 4,0 m, z = 1,5, Q = 20 m3/s")
-    print("=" * 78)
-    for n, a in zip(range(6, -1, -1), coeficientes(Q)):
-        print(f"  a{n} = {a:.6f}")
-    print("  Esperado: 33,10875 H^6 + 264,87 H^5 + 706,32 H^4 + 627,84 H^3"
-          " - 1200 H - 1600 = 0")
- 
-    # ---- Itens 9 e 10: Muller para Q = 20 -------------------------------
-    print("\n" + "=" * 78)
-    print("ITENS 9-10 - Muller, Q = 20 m3/s, H0=0,5  H1=1,0  H2=1,5")
-    print("=" * 78)
-    Hc, n, ok = muller(lambda H: f(H, Q), 0.5, 1.0, 1.5, verbose=True)
-    print(f"\nProfundidade critica: Hc = {Hc:.10f} m")
-    print(f"Numero total de iteracoes: {n}  (convergiu: {ok})")
- 
-    # ---- Item 11: Froude -------------------------------------------------
-    print("\n" + "=" * 78)
-    print("ITEM 11 - Verificacao da condicao de criticidade")
-    print("=" * 78)
-    Ac = B * Hc + Z * Hc**2
-    Tc = B + 2 * Z * Hc
-    Fr2 = froude2(Hc, Q)
-    print(f"  Ac  = {Ac:.8f} m2")
-    print(f"  Tc  = {Tc:.8f} m")
-    print(f"  Fr^2 = {Fr2:.12f}")
-    print(f"  Fr   = {sqrt(Fr2):.12f}")
-    print(f"  |Fr^2 - 1| = {abs(Fr2 - 1):.3e}")
- 
-    # ---- Item 12: admissibilidade ---------------------------------------
-    print("\n" + "=" * 78)
-    print("ITEM 12 - Admissibilidade fisica da raiz")
-    print("=" * 78)
-    print("  Raiz real?      SIM (Muller em aritmetica real)")
-    print(f"  Raiz positiva?  {'SIM' if Hc > 0 else 'NAO'} (Hc = {Hc:.6f})")
-    print("  Todas as raizes do polinomio (numpy.roots, apenas conferencia):")
-    for r in np.roots(coeficientes(Q)):
-        adm = abs(r.imag) < 1e-9 and r.real > 0
-        print(f"    {r.real:+12.6f} {r.imag:+12.6f}j   "
-              f"{'<- fisicamente admissivel' if adm else 'descartada'}")
- 
-    # ---- Item 13: varredura de vazoes -----------------------------------
-    print("\n" + "=" * 78)
-    print("ITEM 13 - Varredura de vazoes")
-    print("=" * 78)
-    vazoes = [5, 10, 15, 20, 25, 30, 35, 40]
-    resultados = []
-    print(f"{'Q [m3/s]':>10} {'Hc [m]':>14} {'iter':>6} {'Fr^2':>16}")
-    for q in vazoes:
-        h, it, conv = resolve(float(q))
-        assert conv and h > 0, f"Falha para Q = {q}"
-        resultados.append((q, h))
-        print(f"{q:>10} {h:>14.8f} {it:>6} {froude2(h, q):>16.12f}")
- 
-    arq = "resultados_Q_Hc.txt"
-    with open(arq, "w") as fh:
-        fh.write("# Q [m3/s]    Hc [m]\n")
-        for q, h in resultados:
-            fh.write(f"{q:8.1f} {h:14.8f}\n")
-    print(f"\nArquivo salvo em: {arq}")
- 
-    # ---- Item 14: grafico ------------------------------------------------
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
- 
-        qs = [r[0] for r in resultados]
-        hs = [r[1] for r in resultados]
-        fig, ax = plt.subplots(figsize=(6.5, 4.2))
-        ax.plot(qs, hs, "o-", lw=2)
-        ax.set_xlabel(r"Vazão $Q$ (m³/s)")
-        ax.set_ylabel(r"Profundidade crítica $H_c$ (m)")
-        ax.set_title(r"Canal trapezoidal ($b$ = 4,0 m, $z$ = 1,5): $H_c \times Q$")
-        ax.grid(alpha=0.3)
-        fig.tight_layout()
-        png = "grafico_Hc_Q.png"
-        fig.savefig(png, dpi=150)
-        print(f"Grafico salvo em: {png}")
-    except ImportError:
-        print("matplotlib nao instalado: grafico nao gerado (pip install matplotlib).")
- 
-    # ---- Item 15(f): outras aproximacoes iniciais -------------------------
-    print("\n" + "=" * 78)
-    print("ITEM 15(f) - Q = 20 m3/s com diferentes aproximacoes iniciais")
-    print("=" * 78)
-    chutes = [(0.5, 1.0, 1.5), (0.1, 0.5, 1.0), (1.0, 2.0, 3.0),
-              (2.0, 3.0, 5.0), (-1.0, 0.0, 1.0), (0.2, 0.3, 0.4)]
-    print(f"{'H0':>6} {'H1':>6} {'H2':>6} {'Hc [m]':>16} {'iter':>6} {'convergiu':>10}")
-    for h0, h1, h2 in chutes:
-        h, it, conv = resolve(Q, h0, h1, h2)
-        obs = "" if h > 0 else "  (raiz negativa: nao admissivel)"
-        print(f"{h0:>6} {h1:>6} {h2:>6} {h:>16.10f} {it:>6} {str(conv):>10}{obs}")
- 
- 
-if __name__ == "__main__":
-    main()
+plt.figure(figsize=(6.5, 4))
+plt.plot(vazoes, profs, "o-", lw=2)
+plt.xlabel("Vazão Q (m³/s)")
+plt.ylabel("Profundidade crítica Hc (m)")
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig("grafico_Hc_Q.png", dpi=150)
