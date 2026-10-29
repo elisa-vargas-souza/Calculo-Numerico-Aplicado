@@ -73,6 +73,8 @@ erro = 1  # erro inicial para o critério de convergência
 k = 0  # contador de iterações
 F_old = f(T_old,A,h,e,o,P,T_inf) # f(T_old) inicial
 F = f(T,A,h,e,o,P,T_inf) # f(T) inicial
+#obs: quando não temos a função analítica, podemos calcular f(T_new) por meio de interpolação linear [ f(T_new) = f(T_old) - ((f(T)-f(T_old))*((T-T_old)/(T_new - T_old)))]
+# usando os pontos entre o T_new
 
 while abs(erro) >= tol:
 
