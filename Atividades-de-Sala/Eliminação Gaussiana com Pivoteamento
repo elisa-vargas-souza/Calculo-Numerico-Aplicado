@@ -1,0 +1,334 @@
+import math
+ 
+import numpy as np
+ 
+EPS = 2.220446049250313e-16   # epsilon de maquina (double)
+FREF2 = [100.0, -80.0]
+FREF5 = [100.0, -80.0, 20.0, 35.0, 15.0]
+PHI = 45.0
+PERTURB = 0.01                # perturbacao de 0,01 N
+ 
+ 
+# Utilitarios
+
+def rad(grau):
+    return math.radians(grau)
+ 
+ 
+def matvec(A, x):
+    return [sum(A[i][j] * x[j] for j in range(len(x))) for i in range(len(A))]
+ 
+ 
+def norma_inf(v):
+    return max(abs(t) for t in v)
+ 
+ 
+def copia(A):
+    return [linha[:] for linha in A]
+ 
+ 
+def imprime_matriz(A, b):
+    for linha, bi in zip(A, b):
+        print("    " + " ".join(f"{a:12.5e}" for a in linha) + f" | {bi:12.5e}")
+ 
+ 
+def arred_sig(x, s=4):
+    """Arredonda x para s algarismos significativos (simula aritmetica de
+    precisao reduzida; imprimir menos casas NAO faz isso)."""
+    if x == 0.0 or not math.isfinite(x):
+        return x
+    return float(f"{x:.{s - 1}e}")
+ 
+ 
+def identidade(x):
+    return x
+ 
+ 
+def cond_inf(A):
+    return float(np.linalg.cond(np.array(A), np.inf))
+ 
+ 
+
+# Matrizes do problema
+
+def matriz_2x2(th1, th2):
+    t1, t2 = rad(th1), rad(th2)
+    return [[math.sin(t1), math.sin(t2)],
+            [math.cos(t1), math.cos(t2)]]
+ 
+ 
+def matriz_5x5(th1, th2, phi=PHI):
+    t1, t2, f = rad(th1), rad(th2), rad(phi)
+    return [[math.sin(t1), math.sin(t2), 1.0, 0.0, 0.0],
+            [math.cos(t1), math.cos(t2), 0.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0, math.cos(f), 0.0],
+            [0.0, 0.0, 0.0, -math.sin(f), -1.0],
+            [0.0, 0.0, 0.0, 0.0, 1.0]]
+ 
+ 
+CONFIGS = {"A: afastadas": (15.0, 65.0),
+           "B: proximas": (10.0, 10.1),
+           "C: quase paralelas": (0.01, 0.02)}
+ 
+ 
+
+# Parte 3 - eliminacao gaussiana (ingenua ou com pivoteamento parcial)
+
+class Contador:
+    """md = multiplicacoes/divisoes;  sa = somas/subtracoes.
+    Comparacoes, trocas de linha e A(i,k)=0 NAO sao contadas."""
+ 
+    def __init__(self):
+        self.md = 0
+        self.sa = 0
+ 
+ 
+def eliminacao(A0, b0, pivotear=True, arred=identidade, eps=EPS,
+               verbose=True, rotulo=""):
+    """Resolve A x = b por eliminacao gaussiana.
+ 
+    pivotear=False -> eliminacao ingenua (sem busca/troca de pivo)
+    pivotear=True  -> pivoteamento parcial (troca de linhas na etapa k)
+    arred          -> funcao aplicada ao resultado de CADA operacao aritmetica
+ 
+    Retorna dict com: x, ok, trocas, pivos, cont, limite.
+    """
+    n = len(b0)
+    A, b = copia(A0), b0[:]                      # copias: originais preservados
+    cont = Contador()
+    trocas, pivos = [], []
+    escala = max(abs(a) for linha in A0 for a in linha)
+    limite_pivo = n * eps * escala               # criterio RELATIVO (ver cabecalho)
+ 
+    def falha(msg):
+        if verbose:
+            print(f"    >>> {msg}")
+        return dict(x=None, ok=False, trocas=trocas, pivos=pivos, cont=cont,
+                    limite=limite_pivo)
+ 
+    if verbose:
+        print(f"  [{rotulo}] {'pivoteamento parcial' if pivotear else 'ingenua'}"
+              f" | limite_pivo = {limite_pivo:.3e}")
+ 
+    # ---------------- eliminacao progressiva ----------------
+    for k in range(n - 1):
+        p = k
+        if pivotear:
+            for i in range(k + 1, n):                 # busca do pivo (1x por etapa)
+                if abs(A[i][k]) > abs(A[p][k]):
+                    p = i
+ 
+        if abs(A[p][k]) <= limite_pivo:
+            return falha(f"etapa {k + 1}: pivo {A[p][k]:.3e} <= limite_pivo "
+                         "-> sistema nao pode ser resolvido por essa eliminacao")
+ 
+        if p != k:                                    # troca de linhas (todas as colunas)
+            for j in range(n):
+                A[k][j], A[p][j] = A[p][j], A[k][j]
+            b[k], b[p] = b[p], b[k]
+            trocas.append((k + 1, p + 1))
+        pivos.append(A[k][k])
+ 
+        for i in range(k + 1, n):
+            fator = arred(A[i][k] / A[k][k]);            cont.md += 1
+            for j in range(k + 1, n):
+                prod = arred(fator * A[k][j]);           cont.md += 1
+                A[i][j] = arred(A[i][j] - prod);         cont.sa += 1
+            prod = arred(fator * b[k]);                  cont.md += 1
+            b[i] = arred(b[i] - prod);                   cont.sa += 1
+            A[i][k] = 0.0
+ 
+        if verbose:
+            print(f"    etapa k={k + 1}: linha pivo p={p + 1}"
+                  f"{' (troca ' + str(k + 1) + '<->' + str(p + 1) + ')' if p != k else ' (sem troca)'}"
+                  f", pivo apos a troca = {pivos[-1]:.6e}")
+            imprime_matriz(A, b)
+ 
+    if abs(A[n - 1][n - 1]) <= limite_pivo:
+        return falha(f"pivo final {A[n - 1][n - 1]:.3e} <= limite_pivo")
+ 
+    # ---------------- substituicao regressiva ----------------
+    x = [0.0] * n
+    x[n - 1] = arred(b[n - 1] / A[n - 1][n - 1]);        cont.md += 1
+    for i in range(n - 2, -1, -1):
+        soma = b[i]
+        for j in range(i + 1, n):
+            prod = arred(A[i][j] * x[j]);                cont.md += 1
+            soma = arred(soma - prod);                   cont.sa += 1
+        x[i] = arred(soma / A[i][i]);                    cont.md += 1
+ 
+    return dict(x=x, ok=True, trocas=trocas, pivos=pivos, cont=cont,
+                limite=limite_pivo)
+ 
+ 
+def flops_teoricos(n):
+    """Contagem analitica (eliminacao + substituicao regressiva)."""
+    md = sum((n - k) * (1 + (n - k) + 1) for k in range(1, n)) + n + n * (n - 1) // 2
+    sa = sum((n - k) * ((n - k) + 1) for k in range(1, n)) + n * (n - 1) // 2
+    return md, sa
+ 
+ 
+def metricas(A, b, x, Fref):
+    """Erro em relacao a Fref e residuo r = A_orig x - b_orig (norma infinito)."""
+    erro = norma_inf([xi - fi for xi, fi in zip(x, Fref)])
+    r = [ai - bi for ai, bi in zip(matvec(A, x), b)]
+    return erro, norma_inf(r)
+ 
+ 
+
+# Parte 1 - sistema 2x2
+
+def parte1():
+    print("=" * 78)
+    print("PARTE 1 - Duas barras: determinante e sensibilidade")
+    print("=" * 78)
+    print(f"{'configuracao':<22}{'det(A2)':>14}{'|sin(t1-t2)|':>16}{'cond_inf':>14}")
+    for nome, (t1, t2) in CONFIGS.items():
+        A2 = matriz_2x2(t1, t2)
+        det = A2[0][0] * A2[1][1] - A2[0][1] * A2[1][0]
+        print(f"{nome:<22}{det:>14.6e}{abs(math.sin(rad(t1 - t2))):>16.6e}"
+              f"{cond_inf(A2):>14.4e}")
+ 
+    print("\nUm determinante pequeno NAO basta para medir o condicionamento:")
+    for esc in (1.0, 1e-8):
+        M = [[esc, 0.0], [0.0, esc]]
+        print(f"  M = {esc:g}*I : det = {esc * esc:.1e} , cond_inf = {cond_inf(M):.1f}")
+    print("  (det muda com a escala/unidades das equacoes; cond nao muda com "
+          "multiplo escalar)")
+ 
+    print("\nSensibilidade: p = -A2*Fref, resolve A2 F = -p; perturba +0,01 N em py (pedido)")
+    print("e, para comparacao, em px (a direcao em que barras quase paralelas "
+          "sao mais sensiveis)")
+    print(f"{'configuracao':<22}{'perturb.':>9}{'F1':>12}{'F2':>12}{'dF1':>14}"
+          f"{'dF2':>14}{'|dF|/|dp|':>12}")
+    for nome, (t1, t2) in CONFIGS.items():
+        A2 = matriz_2x2(t1, t2)
+        p = [-v for v in matvec(A2, FREF2)]
+        F = eliminacao(A2, [-v for v in p], verbose=False)["x"]
+        for rot, idx in (("py", 1), ("px", 0)):
+            pp = p[:]
+            pp[idx] += PERTURB
+            Fp = eliminacao(A2, [-v for v in pp], verbose=False)["x"]
+            dF = [Fp[0] - F[0], Fp[1] - F[1]]
+            print(f"{nome:<22}{rot:>9}{F[0]:>12.6f}{F[1]:>12.6f}{dF[0]:>14.6e}"
+                  f"{dF[1]:>14.6e}{norma_inf(dF) / PERTURB:>12.4e}")
+ 
+ 
+
+# Partes 2 a 4 - sistema 5x5
+
+def cenarios():
+    return {"A": matriz_5x5(*CONFIGS["A: afastadas"]),
+            "C": matriz_5x5(*CONFIGS["C: quase paralelas"])}
+ 
+ 
+def parte_comparacao():
+    print("\n" + "=" * 78)
+    print("PARTES 2-4 - Sistema 5x5: ingenua x pivoteamento parcial (dupla precisao)")
+    print("=" * 78)
+    resumo = []
+    for nome, A in cenarios().items():
+        b = matvec(A, FREF5)           # b = A Fref (Fref nao e dado ao solver)
+        print(f"\n### Cenario {nome}  (cond_inf(A) = {cond_inf(A):.4e})")
+        print("  b =", " ".join(f"{v:.6f}" for v in b))
+        for pivotear in (False, True):
+            res = eliminacao(A, b, pivotear=pivotear, verbose=True,
+                             rotulo=f"cenario {nome}")
+            if res["ok"]:
+                erro, resid = metricas(A, b, res["x"], FREF5)
+                print("    F calculado =", " ".join(f"{v:.10f}" for v in res["x"]))
+                print(f"    trocas de linhas = {res['trocas'] or 'nenhuma'}")
+                print(f"    erro_inf = {erro:.3e} | residuo ||r||_inf = {resid:.3e}")
+                resumo.append((nome, "parcial" if pivotear else "ingenua",
+                               res["trocas"], erro, resid))
+    print("\nResumo (dupla precisao):")
+    print(f"{'cen':<5}{'versao':<10}{'trocas':<26}{'erro_inf':>12}{'||r||_inf':>12}")
+    for nome, ver, tr, e, r in resumo:
+        print(f"{nome:<5}{ver:<10}{str(tr or '-'):<26}{e:>12.3e}{r:>12.3e}")
+ 
+ 
+def parte_precisao_reduzida():
+    print("\n" + "=" * 78)
+    print("ITEM 7 - Precisao reduzida: 4 algarismos significativos em cada operacao")
+    print("=" * 78)
+    print("Obs.: nesta secao o limiar de pivo usa eps = 1e-12 (relativo), "
+          "para observar a\n      degradacao numerica em vez de interromper o "
+          "metodo por 'pivo pequeno'.")
+    arred4 = lambda x: arred_sig(x, 4)
+    print(f"\n{'cen':<5}{'dados':<12}{'versao':<10}{'erro_inf':>12}{'||r||_inf':>12}"
+          f"{'  F calculado'}")
+    for nome, A in cenarios().items():
+        b = matvec(A, FREF5)
+        for dados in ("exatos", "4 digitos"):
+            if dados == "exatos":
+                Ause, buse = A, b
+            else:
+                Ause = [[arred4(a) for a in linha] for linha in A]
+                buse = [arred4(v) for v in b]
+            for pivotear in (False, True):
+                res = eliminacao(Ause, buse, pivotear=pivotear, arred=arred4,
+                                 eps=1e-12, verbose=False)
+                ver = "parcial" if pivotear else "ingenua"
+                if res["ok"]:
+                    erro, resid = metricas(A, b, res["x"], FREF5)
+                    F = "[" + ", ".join(f"{v:.5g}" for v in res["x"]) + "]"
+                    print(f"{nome:<5}{dados:<12}{ver:<10}{erro:>12.3e}{resid:>12.3e}  {F}")
+                else:
+                    print(f"{nome:<5}{dados:<12}{ver:<10}{'--':>12}{'--':>12}  "
+                          "interrompido (pivo ~ 0)")
+ 
+ 
+def parte_condicionamento():
+    print("\n" + "=" * 78)
+    print("ITEM 8 - Condicionamento: perturba b2 em +0,01 N (pivoteamento parcial)")
+    print("=" * 78)
+    print(f"{'cen':<5}{'perturb.':<12}{'||db||_inf':>12}{'||dF||_inf':>14}"
+          f"{'||dF||/||db||':>16}{'cond_inf(A)':>14}")
+    for nome, A in cenarios().items():
+        b = matvec(A, FREF5)
+        F = eliminacao(A, b, pivotear=True, verbose=False)["x"]
+        # b2 = equilibrio vertical em A (pedido); b1 = horizontal em A (extra,
+        # direcao em que barras quase paralelas sao mais sensiveis)
+        for rot, idx in (("b2 (pedido)", 1), ("b1 (extra)", 0)):
+            bp = b[:]
+            bp[idx] += PERTURB
+            Fp = eliminacao(A, bp, pivotear=True, verbose=False)["x"]
+            db = norma_inf([u - v for u, v in zip(bp, b)])
+            dF = norma_inf([u - v for u, v in zip(Fp, F)])
+            print(f"{nome:<5}{rot:<12}{db:>12.3e}{dF:>14.6e}{dF / db:>16.4e}"
+                  f"{cond_inf(A):>14.4e}")
+    print("A troca de linhas apenas reordena as equacoes: a matriz (e portanto o "
+          "problema fisico,\ncom seu cond(A)) e a mesma. Ela melhora a ESTABILIDADE "
+          "do algoritmo, nao o CONDICIONAMENTO.")
+ 
+ 
+def parte_flops():
+    print("\n" + "=" * 78)
+    print("ITEM 9 - Contagem de FLOPs (n = 5)")
+    print("=" * 78)
+    n = 5
+    md_t, sa_t = flops_teoricos(n)
+    print(f"Formula analitica: mult/div = {md_t}, soma/sub = {sa_t}")
+    print(f"{'cenario':<9}{'versao':<10}{'mult/div':>10}{'soma/sub':>10}{'total':>8}")
+    for nome, A in cenarios().items():
+        b = matvec(A, FREF5)
+        for pivotear in (False, True):
+            c = eliminacao(A, b, pivotear=pivotear, verbose=False)["cont"]
+            assert (c.md, c.sa) == (md_t, sa_t)
+            print(f"{nome:<9}{'parcial' if pivotear else 'ingenua':<10}"
+                  f"{c.md:>10}{c.sa:>10}{c.md + c.sa:>8}")
+    print("O pivoteamento so acrescenta comparacoes e trocas (nao contadas): o "
+          "numero de FLOPs e igual.")
+ 
+ 
+def main():
+    parte1()
+    parte_comparacao()
+    parte_precisao_reduzida()
+    parte_condicionamento()
+    parte_flops()
+ 
+ 
+if __name__ == "__main__":
+    main()
+ 
