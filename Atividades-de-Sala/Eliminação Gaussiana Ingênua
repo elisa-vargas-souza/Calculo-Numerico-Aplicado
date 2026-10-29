@@ -1,8 +1,7 @@
-# Eliminação de Gauss
-
+## Importando as bibliotecas
 import numpy as np
 
-##inputs:
+## Inputs
 
 # vazões voluméricas em m^3/min
 Q01 = 5
@@ -45,5 +44,42 @@ b = np.array([
     [0]
 ])
 
+c = np.zeros((5,1))
+
+print(f'Matrizes iniciais:\n\nA =\n{A}\n\nb =\n{b}\n\n')
+
 # definindo o tamanho:
-n = A.shape[0]
+n = A.shape[0] # tamanho da matriz é 5x5
+
+md = 0 # contador de multiplicação e divisão
+ss = 0 # contador de soma e subtração
+
+## Loops da eliminação
+for k in range(n-1):  # linha e coluna do pivô
+    for i in range(k+1,n):  # linha onde haverá eliminação
+        m = A[i,k]/A[k,k]  # multiplicador
+        for j in range(k+1,n):  # colunas da linha i
+            A[i,j] = A[i,j] - (m*A[k,j])
+            md = md+1
+            ss = ss+1
+        b[i] = b[i] - (m*b[k])
+        A[i,k] = 0
+        md = md+2
+        ss = ss+1
+    print(f'(para k={k})\n\nA =\n{A}\n\nb =\n{b}\n')
+
+print(f'\nMatriz triangular superior resultante:\n\nA =\n{A}\n\n')
+
+## Loop da substituição retroativa
+c[n-1] = b[n-1]/A[n-1,n-1]
+for i in range (n-2,-1,-1):
+    soma = b[i]
+    for j in range(i,n):
+        soma = soma - (A[i,j]*c[j])
+        md = md+1
+        ss = ss+1
+    c[i] = soma/A[i,i]
+    md = md+1
+    print(f'(para i={i})\n\nc =\n{c}\n')
+
+print(f'operações de multiplicação/divisão: {md}\noperações de soma/subtração: {ss}\ntotal de FLOPS: {md+ss}')
