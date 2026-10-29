@@ -1,0 +1,97 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def resolver_bairstow_numpy(coefs, r_ini=1.0, s_ini=1.0, tol=1e-6, max_iter=100):
+  """Implementação do Método de Bairstow usando NumPy e Matplotlib."""
+  raizes = []
+  a = np.array(coefs, dtype=float)
+  n = len(a) - 1
+
+  while n > 2:
+    r, s = r_ini, s_ini
+
+    for _ in range(max_iter):
+      # Passo 1: Calcular os coeficientes b usando vetores/arrays do NumPy
+      b = np.zeros(n + 1)
+      b[n] = a[n]
+      b[n - 1] = a[n - 1] + r * b[n]
+
+      for i in range(n - 2, -1, -1):
+        b[i] = a[i] + r * b[i + 1] + s * b[i + 2]
+
+      # Passo 2: Calcular os coeficientes c (derivadas parciais)
+      c = np.zeros(n + 1)
+      c[n] = b[n]
+      c[n - 1] = b[n - 1] + r * c[n]
+
+      for i in range(n - 2, 0, -1):
+        c[i] = b[i] + r * c[i + 1] + s * c[i + 2]
+
+      # Passo 3 & 4: Resolver o sistema 2x2 para delta_r e delta_s
+      det = c[1] * c[3] - c[2] ** 2
+      if abs(det) < 1e-14:
+        r += 0.1
+        s += 0.1
+        continue
+
+      delta_r = (b[1] * c[2] - b[0] * c[3]) / det
+      delta_s = (b[0] * c[2] - b[1] * c[1]) / det
+
+      r += delta_r
+      s += delta_s
+
+      if abs(delta_r) < tol and abs(delta_s) < tol:
+        break
+
+    # Passo 5: Encontrar as raízes do fator quadrático x^2 - rx - s = 0 usando numpy.roots
+    # Atenção: np.roots recebe os coeficientes do maior para o menor grau: [1, -r, -s]
+    raizes_quad = np.roots([1.0, -r, -s])
+    raizes.extend(raizes_quad)
+
+    # Passo 6: Deflação - atualiza o polinômio com os coeficientes b resultantes
+    a = b[2:]
+    n = len(a) - 1
+
+  # Resolver o polinômio restante usando np.roots (grau 2 ou 1)
+  if n > 0:
+    raizes_finais = np.roots(
+        a[::-1]
+    )  # Inverte para [maior_grau ... menor_grau]
+    raizes.extend(raizes_finais)
+
+  return np.array(raizes)
+
+
+
+# Exemplo de Uso e Visualização com Matplotlib
+
+# Polinômio de teste: x^3 - 6x^2 + 11x - 6 = (x - 1)(x - 2)(x - 3)
+# Coeficientes em ordem crescente de grau: [a_0, a_1, a_2, a_3]
+coeficientes_teste = [-6.0, 11.0, -6.0, 1.0]
+
+print("Calculando as raízes com Bairstow (usando NumPy)...")
+raizes_encontradas = resolver_bairstow_numpy(coeficientes_teste)
+
+print("\nRaízes encontradas:")
+for i, raiz in enumerate(raizes_encontradas, 1):
+  print(f"Raiz {i}: {raiz}")
+
+# Gráfico simples para ilustrar o uso do Matplotlib com as raízes encontradas
+plt.figure(figsize=(6, 6))
+plt.axhline(0, color="grey", linestyle="--")
+plt.axvline(0, color="grey", linestyle="--")
+plt.scatter(
+    raizes_encontradas.real,
+    raizes_encontradas.imag,
+    color="red",
+    s=100,
+    zorder=5,
+    label="Raízes",
+)
+plt.title("Plano Complexo - Raízes do Polinômio")
+plt.xlabel("Parte Real")
+plt.ylabel("Parte Imaginária")
+plt.grid(True)
+plt.legend()
+plt.show()
